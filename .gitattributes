@@ -1,0 +1,4 @@
+
+*.sql text eol=lf
+*.bat text eol=crlf
+*.txt text eol=lf
