@@ -1,4 +1,7 @@
-
+# Enforce LF for source files
 *.sql text eol=lf
-*.bat text eol=crlf
 *.txt text eol=lf
+*.md text eol=lf
+
+# Enforce CRLF for batch scripts
+*.bat text eol=crlf
