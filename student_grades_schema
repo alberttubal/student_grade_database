@@ -1,0 +1,81 @@
+-- Enable foreign keys for this session
+PRAGMA foreign_keys = ON;
+
+-- ================================
+-- Table: students
+-- ================================
+CREATE TABLE students (
+    student_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    last_name  TEXT NOT NULL,
+    email      TEXT NOT NULL UNIQUE,
+    enrollment_date TEXT NOT NULL,             -- ISO-8601 date (YYYY-MM-DD)
+    major      TEXT NOT NULL
+);
+
+-- ================================
+-- Table: instructors
+-- ================================
+CREATE TABLE instructors (
+    instructor_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT NOT NULL,
+    email      TEXT NOT NULL UNIQUE,
+    department TEXT NOT NULL
+);
+
+-- ================================
+-- Table: courses
+-- ================================
+CREATE TABLE courses (
+    course_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    code        TEXT NOT NULL UNIQUE,          -- e.g., CS101
+    title       TEXT NOT NULL,
+    credits     INTEGER NOT NULL,
+    instructor_id INTEGER NOT NULL,
+    FOREIGN KEY (instructor_id) REFERENCES instructors(instructor_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
+-- ================================
+-- Table: enrollments (student-course per term)
+-- ================================
+CREATE TABLE enrollments (
+    enrollment_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER NOT NULL,
+    course_id  INTEGER NOT NULL,
+    semester   TEXT NOT NULL,                  -- e.g., "1st Sem", "2nd Sem", "Summer"
+    year       INTEGER NOT NULL,               -- e.g., 2025
+    status     TEXT NOT NULL,                  -- e.g., "enrolled", "dropped", "completed"
+    FOREIGN KEY (student_id) REFERENCES students(student_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES courses(course_id)
+        ON UPDATE CASCADE ON DELETE CASCADE,
+    UNIQUE (student_id, course_id, semester, year) -- prevent duplicate term enrollment
+);
+
+-- ================================
+-- Table: grades (grade components per enrollment)
+-- ================================
+CREATE TABLE grades (
+    grade_id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    enrollment_id  INTEGER NOT NULL,
+    assignment_name TEXT NOT NULL,             -- e.g., "Midterm", "Lab 1"
+    max_score      REAL NOT NULL CHECK (max_score > 0),
+    score_obtained REAL NOT NULL CHECK (score_obtained >= 0),
+    weight         REAL NOT NULL CHECK (weight > 0 AND weight <= 1), -- proportion of final grade
+    date_submitted TEXT NOT NULL,              -- ISO-8601 date
+    FOREIGN KEY (enrollment_id) REFERENCES enrollments(enrollment_id)
+        ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+-- ================================
+-- Indexes
+-- ================================
+-- Composite index to speed up frequent lookups: all enrollments for a student,
+-- and joins filtering by student+course per term.
+CREATE INDEX idx_enrollments_student_course_term
+ON enrollments (student_id, course_id, year, semester);
+
+-- Index to accelerate joins and grade retrieval by enrollment.
+CREATE INDEX idx_grades_enrollment_date
+ON grades (enrollment_id, date_submitted);
